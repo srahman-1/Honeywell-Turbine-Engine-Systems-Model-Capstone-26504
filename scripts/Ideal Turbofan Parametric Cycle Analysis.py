@@ -42,6 +42,7 @@ density = 1.23
 fan_tip_radius = 0.06985
 HTR = 0.35
 Nacelle_radius = 0.0762
+r_shaft=0.008
 
 "Equations"
 R = ((y - 1) / y) * Cp
@@ -81,10 +82,10 @@ F_0_geometry = F_m0 * geometry_total_mass_flow
 F_0_corrected_mass_flow = F_m0 * corrected_mass_flow
 
 "Splitter Radius"
-splitter_radius = fan_tip_radius * sqrt(((1 - HTR ** 2) / BPR) + HTR ** 2)
+splitter_radius = sqrt((fan_tip_radius**2+BPR*(r_shaft**2))/(BPR+1))
 
 "Area of core, Assuming constant hub to tip ratio"
-A_21 = pi * (splitter_radius ** 2 - ((fan_tip_radius ** 2) * (HTR ** 2)))
+A_21 = pi * (splitter_radius ** 2 - r_shaft**2)
 
 "Area and Velocity(for geometry and corrected mass flow) at station 13"
 A_13 = pi * (Nacelle_radius ** 2 - splitter_radius ** 2)
