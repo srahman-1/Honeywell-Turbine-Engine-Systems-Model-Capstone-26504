@@ -28,7 +28,7 @@ Outputs: Specific Thrust, fuel to air ratio, SFC, (eta_T: Thermal, eta_P: Propul
 """
 
 "Input Variables"
-corrected_mass_flow = 0.8
+mass_flow = 0.8
 pi_f = 1.3
 V_0 = 27
 T_0 = 253
@@ -69,17 +69,20 @@ eta_0 = eta_T * eta_P
 
 "Mass Flow Calculation based on geometry, Doesn't display"
 fan_inlet_area = pi * (fan_tip_radius ** 2) * (1 - HTR ** 2)
+
+'''
 geometry_total_mass_flow = density * V_0 * fan_inlet_area
 geometry_fan_mass_flow = (BPR * geometry_total_mass_flow) / (1 + BPR)
 geometry_core_mass_flow = geometry_total_mass_flow - geometry_fan_mass_flow
+'''
 
-"Mass Flow Calculation based on corrected mass flow"
-corrected_fan_mass_flow = (BPR * corrected_mass_flow) / (1 + BPR)
-corrected_core_mass_flow = corrected_mass_flow - corrected_fan_mass_flow
+"Mass Flow Calculation based on  mass flow"
+fan_mass_flow = (BPR * mass_flow) / (1 + BPR)
+core_mass_flow = mass_flow - fan_mass_flow
 
-"Uninstalled Thrust based on geometry and corrected mass flow"
-F_0_geometry = F_m0 * geometry_total_mass_flow #doesn't display
-F_0_corrected_mass_flow = F_m0 * corrected_mass_flow
+"Uninstalled Thrust based on geometry and  mass flow"
+#F_0_geometry = F_m0 * geometry_total_mass_flow #doesn't display
+F_0_mass_flow = F_m0 * mass_flow
 
 "Splitter Radius"
 splitter_radius = sqrt((fan_tip_radius**2+BPR*(r_shaft**2))/(BPR+1))
@@ -87,24 +90,24 @@ splitter_radius = sqrt((fan_tip_radius**2+BPR*(r_shaft**2))/(BPR+1))
 "Area of core, Assuming constant hub to tip ratio"
 A_21 = pi * (splitter_radius ** 2 - r_shaft**2)
 
-"Area and Velocity(for geometry and corrected mass flow) at station 13"
+"Area and Velocity(for geometry and  mass flow) at station 13"
 A_13 = pi * (Nacelle_radius ** 2 - splitter_radius ** 2)
-V_13_geometry_mass_flow = geometry_fan_mass_flow / (density * A_13) #doesn't display
-V_13_corrected_mass_flow = corrected_fan_mass_flow / (density * A_13)
+#V_13_geometry_mass_flow = geometry_fan_mass_flow / (density * A_13) #doesn't display
+V_13_mass_flow = fan_mass_flow / (density * A_13)
 
-"Area and Velocity at bypass nozzle exit, station 19 (vcmf: Velocity corrected mass flow)"
+"Area and Velocity at bypass nozzle exit, station 19 (vcmf: Velocity  mass flow)"
 V_19 = V_19_a0 * a_0
-A_19_geometry_velocity = (V_13_geometry_mass_flow * A_13) / V_19 #doesn't display
-A_19_vcmf = (V_13_corrected_mass_flow * A_13) / V_19
+#A_19_geometry_velocity = (V_13_geometry_mass_flow * A_13) / V_19 #doesn't display
+A_19_vcmf = (V_13_mass_flow * A_13) / V_19
 M_19 = V_19 / a_0
 
 "Bypass Exit Radius"
 r_bypass_nozzle=sqrt((A_19_vcmf/pi)+splitter_radius**2)
 
 Output_values = [R, a_0, M_0, tau_r, tau_lamb, tau_c, tau_f, V_9_a0, V_19_a0, F_m0, f, SFC, eta_T, eta_P, eta_0,
-                 fan_inlet_area, corrected_mass_flow,
-                 corrected_fan_mass_flow, corrected_core_mass_flow, F_0_corrected_mass_flow,
-                 splitter_radius, A_21, A_13, V_13_corrected_mass_flow, V_19,
+                 fan_inlet_area, mass_flow,
+                 fan_mass_flow, core_mass_flow, F_0_mass_flow,
+                 splitter_radius, A_21, A_13, V_13_mass_flow, V_19,
                  A_19_vcmf]
 
 'Limits decimal precision to 4 for each value'
@@ -126,19 +129,19 @@ labels = ["Specific Gas Constant (J/kg K):",
           "Propulsive Efficiency:",
           "Total Efficiency:",
           "Fan Inlet Area (m^2):",
-          "Corrected total mass flow values (kg/s):",
-          "Corrected fan mass flow values (kg/s):",
-          "Corrected core mass flow values (kg/s) :",
-          "Thrust based on corrected mass flow (N):",
+          " total mass flow values (kg/s):",
+          " fan mass flow values (kg/s):",
+          " core mass flow values (kg/s) :",
+          "Thrust based on  mass flow (N):",
           "Splitter Radius (m):",
           "Area of core (m^2):",
           "Area at station 13 (inlet to bypass duct) (m^2):",
-          "Velocity at station 13 based on corrected mass flow (m/s):",
+          "Velocity at station 13 based on  mass flow (m/s):",
           "Velocity at Station 19, Bypass Nozzle Exit (m/s):",
-          "Area of Bypass Nozzle Exit (corrected mass flow) (m^2):"]
+          "Area of Bypass Nozzle Exit ( mass flow) (m^2):"]
 for x, y in zip(labels, formatted_values):
     print(x, y)
-print('Bypass Nozzle Radius, from center line (corrected mass flow) (m): ',r_bypass_nozzle)
+print('Bypass Nozzle Radius, from center line ( mass flow) (m): ',r_bypass_nozzle)
 """
 print("Specific Gas Constant: ", "\nSpeed of Sound:", "\nMach Number:",
       "\nFreestream Total/Static temperature ratio", "\nBurner Enthalpy Ratio:",
@@ -148,11 +151,11 @@ print("Specific Gas Constant: ", "\nSpeed of Sound:", "\nMach Number:",
       "\nTemperature Efficiency", "\nPropulsive Efficiency:", "\nTotal Efficiency:",
       "\nFan Inlet Area:", "\nGeometry Total Mass Flow Values:",
       "\nGeometry Fan Mass Flow Values:", "\nGeometry Core Mass Flow Values:",
-      "\nCorrected total mass flow values (total, fan, core):", "\nCorrected fan mass flow values:",
-      "\nCorrected core mass flow values ",
-      "\nThrust based on geometry mass flow:", "\nThrust based on corrected mass flow:",
+      "\n total mass flow values (total, fan, core):", "\n fan mass flow values:",
+      "\n core mass flow values ",
+      "\nThrust based on geometry mass flow:", "\nThrust based on  mass flow:",
       "\nSplitter Radius:", "\nArea of core:", "\nArea at station 13 (inlet to bypass duct):",
-      "\nVelocity based on geometry mass flow:", "\nVelocity based on corrected mass flow:",
+      "\nVelocity based on geometry mass flow:", "\nVelocity based on  mass flow:",
       "\nVelocity at Station 19, Bypass Nozzle Exit:",
-      "\nArea of Bypass Nozzle Exit (geometry mass flow):", "\nArea of Bypass Nozzle Exit (corrected mass flow):")
+      "\nArea of Bypass Nozzle Exit (geometry mass flow):", "\nArea of Bypass Nozzle Exit ( mass flow):")
 """
