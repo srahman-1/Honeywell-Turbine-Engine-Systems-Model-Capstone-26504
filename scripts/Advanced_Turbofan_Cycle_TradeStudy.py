@@ -11,8 +11,11 @@ from dataclasses import dataclass
 # ADVANCED TURBOFAN PARAMETRIC CYCLE MODEL
 @dataclass
 class Params:
-    Consider_Core_Performance = True
+    "The efficiency, pressure, cp_t, gamma_t, h_PR, Tt4 values aren't set in stone"
+    Consider_Core_Performance = False
+    'Weight in kilograms'
     Weight: float = 8
+
     #Specific heat ratios and constant pressure specific heat for compressor and turbine
     gamma_c: float = 1.4
     gamma_t: float = 1.33
@@ -22,34 +25,31 @@ class Params:
     # Ambient conditions
     T0: float = 288.15
     P0: float = 101325.0
-    V0: float = 27.78
+    V0: float = 35
 
     # Efficiencies
-    'Placeholder values'
-    eta_burner: float = 1
-    eta_mechanical: float = 1
+    eta_burner: float = 0.9
+    eta_mechanical: float = 0.95
 
     #Polytropic Efficiencies
-    'PlaceHolder values'
-    polytropic_eff_comp: float = 1
-    polytropic_eff_fan: float = 1
-    polytropic_eff_turbine: float = 1
+    polytropic_eff_comp: float = 0.8
+    polytropic_eff_fan: float = 0.87
+    polytropic_eff_turbine: float = 0.85
 
     #Total Pressure Ratios
-    'Placeholder values'
-    pi_d_max: float = 1.2
-    pi_burner: float = 1.2
-    pi_nozzle: float = 1.2
+    pi_d_max: float = 0.97
+    pi_burner: float = 0.95
+    pi_nozzle: float = 1.4
     pi_fan_nozzle: float = 1.2
-    pi_fan: float = 1.2
-    pi_compressor: float = 6
+    pi_fan: float = 1.3
+    pi_compressor: float = 4
 
-    'Overall Pressure Ratio is Pt3/P0'
-    OPR: float = 6
     # Engine assumptions
-    mdot_total: float = 1.2
+    mdot_total: float = 0.71
+
     'Low Heating Value of fuel Jet-A J/kg [(JP-8:43.17, Jet A1:43.33) <-- MJ/kg]'
     h_PR: float = 42.8 * (10 ** 6)
+
     'Burner exit temperature'
     Tt4: float = 1070.0
     g: float = 9.81
@@ -64,8 +64,6 @@ def total_conditions(T, P, M, gamma):
 def turbofan_cycle(BPR, p: Params):
     # Specific Gas Constants
 
-    global P0_P19
-    global P0_P9
     R_c: float = ((p.gamma_c - 1) / p.gamma_c) * p.cp_c
     R_t: float = ((p.gamma_t - 1) / p.gamma_t) * p.cp_t
     # Speed of Sound
@@ -121,14 +119,14 @@ def turbofan_cycle(BPR, p: Params):
         P0_P9 = 1
         P0_P19 = 1
 
-    return P0_P9, P0_P19, a0, M0, pi_d, tau_r, pi_r, tau_lambda, tau_compressor, tau_fan, fuel_air_ratio, tau_turbine, pi_turbine, R_c, R_t
+    OPR=p.pi_compressor*pi_d*pi_r
+
+    return P0_P9, P0_P19, a0, M0, pi_d, tau_r, pi_r, tau_lambda, tau_compressor, tau_fan, fuel_air_ratio, tau_turbine, pi_turbine, R_c, R_t, OPR
 
 
 def Turbofan_Performance(BPR: float, p: Params):
-    global Pt9_P9, T9_T0, V9_a0
-
     "Don't know if function is called correctly"
-    P0_P9, P0_P19, a0, M0, pi_d, tau_r, pi_r, tau_lambda, tau_compressor, tau_fan, fuel_air_ratio, tau_turbine, pi_turbine, R_c, R_t = turbofan_cycle(
+    P0_P9, P0_P19, a0, M0, pi_d, tau_r, pi_r, tau_lambda, tau_compressor, tau_fan, fuel_air_ratio, tau_turbine, pi_turbine, R_c, R_t, OPR = turbofan_cycle(
         BPR, p)
 
     'Core Characteristics'
@@ -139,8 +137,6 @@ def Turbofan_Performance(BPR: float, p: Params):
 
     V9_a0 = M9 * np.sqrt(((p.gamma_t * R_t) / (p.gamma_c * R_c)) * T9_T0)
 
-    if p.Consider_Core_Performance == False:
-        Pt9_P9, M9, T9_T0, V9_a0 = [0] * 4
 
     'Bypass Characteristics'
     Pt19_P19 = P0_P19 * pi_r * pi_d * p.pi_fan * p.pi_fan_nozzle
@@ -149,10 +145,14 @@ def Turbofan_Performance(BPR: float, p: Params):
     V19_a0 = M19 * np.sqrt(T19_T0)
 
     'Specific Thrust, F/(total mass flow)'
-    Specific_Thrust: float = (a0 / (1 + BPR)) * (((1 + fuel_air_ratio) * V9_a0 - M0 + (1 + fuel_air_ratio) * (
+    if p.Consider_Core_Performance == False:
+        Specific_Thrust: float = ((BPR * a0) / (1 + BPR)) * (V19_a0 - M0 + (T19_T0 / V19_a0) * ((1 - P0_P19) / p.gamma_c))
+    elif p.Consider_Core_Performance == True:
+        Specific_Thrust: float = (a0 / (1 + BPR)) * (((1 + fuel_air_ratio) * V9_a0 - M0 + (1 + fuel_air_ratio) * (
                 (R_t * T9_T0) / (R_c * V9_a0)) * ((1 - P0_P9) / p.gamma_c)) + ((BPR * a0) / (1 + BPR)) * (
                                                              V19_a0 - M0 + (T19_T0 / V19_a0) * (
-                                                                 (1 - P0_P19) / p.gamma_c)))
+                                                             (1 - P0_P19) / p.gamma_c)))
+
 
     SFC: float = fuel_air_ratio / ((1 + BPR) * Specific_Thrust)
 
@@ -184,23 +184,20 @@ def Turbofan_Performance(BPR: float, p: Params):
     return Specific_Thrust, eta_thermal, eta_propulsive, eta_total, M9, M19, V9_a0, V19_a0, Pt9_P9, Pt19_P19, T9_T0, T19_T0, SFC, tw
 
 
-'Needs to be updated for varying BPR, for now should keep OPR constant (can also calculate OPR=pi_compressor*pi_inlet*pi_r'
-'Maybe put Peformance values for different OPRs in seperate CSV files or diff sheets in Excel'
-
-
 def main():
     p = Params()
 
     BPR_range = np.linspace(2.0, 4.0, 20)
-    #OPR_range = np.linspace(6.0, 10.0, 20)
 
     results = []
 
     for BPR in BPR_range:
         Specific_Thrust, eta_thermal, eta_propulsive, eta_total, M9, M19, V9_a0, V19_a0, Pt9_P9, Pt19_P19, T9_T0, T19_T0, SFC, tw = Turbofan_Performance(
             BPR, p)
+        OPR = turbofan_cycle(BPR, p)[15]
+
         results.append(
-            [BPR, p.OPR, Specific_Thrust, eta_thermal, eta_propulsive, eta_total, M9, M19, V9_a0, V19_a0, Pt9_P9,
+            [BPR, OPR, Specific_Thrust, eta_thermal, eta_propulsive, eta_total, M9, M19, V9_a0, V19_a0, Pt9_P9,
              Pt19_P19, T9_T0, T19_T0, SFC, tw])
 
     # Save CSV
