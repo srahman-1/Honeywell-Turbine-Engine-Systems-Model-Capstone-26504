@@ -125,7 +125,7 @@ def turbofan_cycle(BPR, p: Params):
 
 
 def Turbofan_Performance(BPR: float, p: Params):
-    "Don't know if function is called correctly"
+
     P0_P9, P0_P19, a0, M0, pi_d, tau_r, pi_r, tau_lambda, tau_compressor, tau_fan, fuel_air_ratio, tau_turbine, pi_turbine, R_c, R_t, OPR = turbofan_cycle(
         BPR, p)
 
@@ -144,28 +144,41 @@ def Turbofan_Performance(BPR: float, p: Params):
     T19_T0 = (tau_r * tau_fan) / (Pt19_P19 ** ((p.gamma_c - 1) / p.gamma_c))
     V19_a0 = M19 * np.sqrt(T19_T0)
 
-    'Specific Thrust, F/(total mass flow)'
     if p.Consider_Core_Performance == False:
+        'Specific Thrust'
         Specific_Thrust: float = ((BPR * a0) / (1 + BPR)) * (V19_a0 - M0 + (T19_T0 / V19_a0) * ((1 - P0_P19) / p.gamma_c))
+
+        'Propulsive Efficiency'
+        eta_propulsive = (2 * M0 * (BPR * V19_a0 - (1 + BPR) * M0)) / (BPR * (V19_a0 ** 2) - (1 + BPR) * (M0 ** 2))
+
+        'Thermal Efficiency'
+        eta_thermal = ((a0 ** 2) * (BPR * (V19_a0 ** 2) - (1 + BPR) * (M0 ** 2))) / (
+                              2 * fuel_air_ratio * p.h_PR)
+
+        'Total Efficiency'
+        eta_total = eta_propulsive * eta_thermal
+
     elif p.Consider_Core_Performance == True:
+        'Specific Thrust'
         Specific_Thrust: float = (a0 / (1 + BPR)) * (((1 + fuel_air_ratio) * V9_a0 - M0 + (1 + fuel_air_ratio) * (
                 (R_t * T9_T0) / (R_c * V9_a0)) * ((1 - P0_P9) / p.gamma_c)) + ((BPR * a0) / (1 + BPR)) * (
                                                              V19_a0 - M0 + (T19_T0 / V19_a0) * (
                                                              (1 - P0_P19) / p.gamma_c)))
 
-
-    SFC: float = fuel_air_ratio / ((1 + BPR) * Specific_Thrust)
-
-    'Propulsive Efficiency'
-    eta_propulsive = (2 * M0 * ((1 + fuel_air_ratio) * V9_a0 + BPR * V19_a0 - (1 + BPR) * M0)) / (
+        'Propulsive Efficiency'
+        eta_propulsive = (2 * M0 * ((1 + fuel_air_ratio) * V9_a0 + BPR * V19_a0 - (1 + BPR) * M0)) / (
                 (1 + fuel_air_ratio) * (V9_a0 ** 2) + BPR * (V19_a0 ** 2) - (1 + BPR) * (M0 ** 2))
 
-    'Thermal Efficiency'
-    eta_thermal = ((a0 ** 2) * ((1 + fuel_air_ratio) * (V9_a0 ** 2) + BPR * (V19_a0 ** 2) - (1 + BPR) * (M0 ** 2))) / (
-                2 * fuel_air_ratio * p.h_PR)
+        'Thermal Efficiency'
+        eta_thermal = ((a0 ** 2) * (
+                    (1 + fuel_air_ratio) * (V9_a0 ** 2) + BPR * (V19_a0 ** 2) - (1 + BPR) * (M0 ** 2))) / (
+                              2 * fuel_air_ratio * p.h_PR)
 
-    'Total Efficiency'
-    eta_total = eta_propulsive * eta_thermal
+        'Total Efficiency'
+        eta_total = eta_propulsive * eta_thermal
+
+
+    SFC: float = fuel_air_ratio / ((1 + BPR) * Specific_Thrust)
 
     # Compressor
     Tt0, Pt0 = total_conditions(p.T0, p.P0, M0, p.gamma_c)
