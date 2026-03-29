@@ -1,4 +1,7 @@
 from math import sqrt, pi
+import numpy as np
+import matplotlib.pyplot as plt
+import csv
 
 """
 Assumptions for Ideal Turbofan Parametric Cycle Analysis
@@ -34,7 +37,8 @@ V_0 = 27
 T_0 = 253
 y = 1.4
 Cp = 1006
-h_PR = 42.8*(10**6)
+h_PR_list = [42.8*(10**6), 43.17*(10**6), 43.33*(10**6)]
+fuel_names = ["Jet A", "JP-8", "Jet A1"]
 T_t4 = 1923
 pi_c = 6
 BPR = 2
@@ -42,7 +46,7 @@ density = 1.23
 fan_tip_radius = 0.06985
 HTR = 0.35
 Nacelle_radius = 0.0762
-r_shaft=0.008
+r_shaft = 0.008
 
 "Equations"
 R = ((y - 1) / y) * Cp
@@ -59,103 +63,212 @@ V_19_a0 = sqrt((2 / (y - 1)) * (tau_r * tau_f - 1))
 
 F_m0 = (a_0 / (1 + BPR)) * (V_9_a0 - M_0 + BPR * (V_19_a0 - M_0))
 
-f = ((Cp * T_0) / h_PR) * (tau_lamb - tau_r * tau_c)
-
-SFC = f / ((1 + BPR) * F_m0)
-
 eta_T = 1 - 1 / (tau_r * tau_c)
 eta_P = 2 * M_0 * ((V_9_a0 - M_0 + BPR * (V_19_a0 - M_0)) / (V_9_a0 ** 2 - M_0 ** 2 + BPR * (V_19_a0 ** 2 - M_0 ** 2)))
 eta_0 = eta_T * eta_P
 
-"Mass Flow Calculation based on geometry, Doesn't display"
+"Mass Flow Calculation based on geometry"
 fan_inlet_area = pi * (fan_tip_radius ** 2) * (1 - HTR ** 2)
-
-'''
 geometry_total_mass_flow = density * V_0 * fan_inlet_area
 geometry_fan_mass_flow = (BPR * geometry_total_mass_flow) / (1 + BPR)
 geometry_core_mass_flow = geometry_total_mass_flow - geometry_fan_mass_flow
-'''
 
-"Mass Flow Calculation based on  mass flow"
+"Mass Flow Calculation based on mass flow"
 fan_mass_flow = (BPR * mass_flow) / (1 + BPR)
 core_mass_flow = mass_flow - fan_mass_flow
 
-"Uninstalled Thrust based on geometry and  mass flow"
-#F_0_geometry = F_m0 * geometry_total_mass_flow #doesn't display
+"Uninstalled Thrust based on geometry and mass flow"
+F_0_geometry = F_m0 * geometry_total_mass_flow
 F_0_mass_flow = F_m0 * mass_flow
 
 "Splitter Radius"
-splitter_radius = sqrt((fan_tip_radius**2+BPR*(r_shaft**2))/(BPR+1))
+splitter_radius = sqrt((fan_tip_radius**2 + BPR*(r_shaft**2)) / (BPR + 1))
 
 "Area of core, Assuming constant hub to tip ratio"
 A_21 = pi * (splitter_radius ** 2 - r_shaft**2)
 
-"Area and Velocity(for geometry and  mass flow) at station 13"
+"Area and Velocity(for geometry and mass flow) at station 13"
 A_13 = pi * (Nacelle_radius ** 2 - splitter_radius ** 2)
-#V_13_geometry_mass_flow = geometry_fan_mass_flow / (density * A_13) #doesn't display
+V_13_geometry_mass_flow = geometry_fan_mass_flow / (density * A_13)
 V_13_mass_flow = fan_mass_flow / (density * A_13)
 
-"Area and Velocity at bypass nozzle exit, station 19 (vcmf: Velocity  mass flow)"
+"Area and Velocity at bypass nozzle exit, station 19"
 V_19 = V_19_a0 * a_0
-#A_19_geometry_velocity = (V_13_geometry_mass_flow * A_13) / V_19 #doesn't display
+A_19_geometry_velocity = (V_13_geometry_mass_flow * A_13) / V_19
 A_19_vcmf = (V_13_mass_flow * A_13) / V_19
 M_19 = V_19 / a_0
 
 "Bypass Exit Radius"
-r_bypass_nozzle=sqrt((A_19_vcmf/pi)+splitter_radius**2)
+r_bypass_nozzle_geometry = sqrt((A_19_geometry_velocity/pi) + splitter_radius**2)
+r_bypass_nozzle = sqrt((A_19_vcmf/pi) + splitter_radius**2)
 
-Output_values = [R, a_0, M_0, tau_r, tau_lamb, tau_c, tau_f, V_9_a0, V_19_a0, F_m0, f, SFC, eta_T, eta_P, eta_0,
-                 fan_inlet_area, mass_flow,
-                 fan_mass_flow, core_mass_flow, F_0_mass_flow,
-                 splitter_radius, A_21, A_13, V_13_mass_flow, V_19,
-                 A_19_vcmf]
+print("========== SINGLE POINT RESULTS ==========")
+for i in range(len(h_PR_list)):
+    h_PR = h_PR_list[i]
+    fuel_name = fuel_names[i]
 
-'Limits decimal precision to 4 for each value'
-formatted_values = [f"{v:.5f}" for v in Output_values]
+    f = ((Cp * T_0) / h_PR) * (tau_lamb - tau_r * tau_c)
+    SFC = f / ((1 + BPR) * F_m0)
 
-labels = ["Specific Gas Constant (J/kg K):",
-          "Speed of Sound (m/s):",
-          "Mach Number:",
-          "Freestream Total/Static temperature ratio",
-          "Burner Enthalpy Ratio:",
-          "Compressor Total Temperature Ratio:",
-          "Fan Total Temperature Ratio:",
-          "Core Velocity/Speed of Sound Ratio:",
-          "Bypass Velocity/Speed of Sound:",
-          "Specific Thrust (N/(kg/s)):",
-          "Fuel to Air Ratio:",
-          "Specific Fuel Consumption (kg/(N s)):",
-          "Temperature Efficiency",
-          "Propulsive Efficiency:",
-          "Total Efficiency:",
-          "Fan Inlet Area (m^2):",
-          " total mass flow values (kg/s):",
-          " fan mass flow values (kg/s):",
-          " core mass flow values (kg/s) :",
-          "Thrust based on  mass flow (N):",
-          "Splitter Radius (m):",
-          "Area of core (m^2):",
-          "Area at station 13 (inlet to bypass duct) (m^2):",
-          "Velocity at station 13 based on  mass flow (m/s):",
-          "Velocity at Station 19, Bypass Nozzle Exit (m/s):",
-          "Area of Bypass Nozzle Exit ( mass flow) (m^2):"]
-for x, y in zip(labels, formatted_values):
-    print(x, y)
-print('Bypass Nozzle Radius, from center line ( mass flow) (m): ',r_bypass_nozzle)
-"""
-print("Specific Gas Constant: ", "\nSpeed of Sound:", "\nMach Number:",
-      "\nFreestream Total/Static temperature ratio", "\nBurner Enthalpy Ratio:",
-      "\nCompressor Total Temperature Ratio:", "\nFan Total Temperature Ratio:",
-      "\nCore Velocity/Speed of Sound Ratio:", "\nBypass Velocity/Speed of Sound:",
-      "\nSpecific Thrust:", "\nFuel to Air Ratio:", "\nSpecific Fuel Consumption:",
-      "\nTemperature Efficiency", "\nPropulsive Efficiency:", "\nTotal Efficiency:",
-      "\nFan Inlet Area:", "\nGeometry Total Mass Flow Values:",
-      "\nGeometry Fan Mass Flow Values:", "\nGeometry Core Mass Flow Values:",
-      "\n total mass flow values (total, fan, core):", "\n fan mass flow values:",
-      "\n core mass flow values ",
-      "\nThrust based on geometry mass flow:", "\nThrust based on  mass flow:",
-      "\nSplitter Radius:", "\nArea of core:", "\nArea at station 13 (inlet to bypass duct):",
-      "\nVelocity based on geometry mass flow:", "\nVelocity based on  mass flow:",
-      "\nVelocity at Station 19, Bypass Nozzle Exit:",
-      "\nArea of Bypass Nozzle Exit (geometry mass flow):", "\nArea of Bypass Nozzle Exit ( mass flow):")
-"""
+    Output_values = [R, a_0, M_0, tau_r, tau_lamb, tau_c, tau_f, V_9_a0, V_19_a0, F_m0, f, SFC, eta_T, eta_P, eta_0,
+                     fan_inlet_area, geometry_total_mass_flow, geometry_fan_mass_flow, geometry_core_mass_flow,
+                     mass_flow, fan_mass_flow, core_mass_flow, F_0_geometry, F_0_mass_flow,
+                     splitter_radius, A_21, A_13, V_13_geometry_mass_flow, V_13_mass_flow, V_19,
+                     A_19_geometry_velocity, A_19_vcmf]
+
+    formatted_values = [f"{v:.5f}" for v in Output_values]
+
+    labels = ["Specific Gas Constant (J/kg K):",
+              "Speed of Sound (m/s):",
+              "Mach Number:",
+              "Freestream Total/Static temperature ratio:",
+              "Burner Enthalpy Ratio:",
+              "Compressor Total Temperature Ratio:",
+              "Fan Total Temperature Ratio:",
+              "Core Velocity/Speed of Sound Ratio:",
+              "Bypass Velocity/Speed of Sound:",
+              "Specific Thrust (N/(kg/s)):",
+              "Fuel to Air Ratio:",
+              "Specific Fuel Consumption (kg/(N s)):",
+              "Temperature Efficiency:",
+              "Propulsive Efficiency:",
+              "Total Efficiency:",
+              "Fan Inlet Area (m^2):",
+              "Geometry Total Mass Flow (kg/s):",
+              "Geometry Fan Mass Flow (kg/s):",
+              "Geometry Core Mass Flow (kg/s):",
+              "Corrected Total Mass Flow (kg/s):",
+              "Corrected Fan Mass Flow (kg/s):",
+              "Corrected Core Mass Flow (kg/s):",
+              "Thrust based on geometry mass flow (N):",
+              "Thrust based on mass flow (N):",
+              "Splitter Radius (m):",
+              "Area of core (m^2):",
+              "Area at station 13 (m^2):",
+              "Velocity at station 13 geometry mass flow (m/s):",
+              "Velocity at station 13 mass flow (m/s):",
+              "Velocity at Station 19, Bypass Nozzle Exit (m/s):",
+              "Area of Bypass Nozzle Exit (geometry) (m^2):",
+              "Area of Bypass Nozzle Exit (mass flow) (m^2):"]
+
+    print("\nFuel:", fuel_name)
+    for x, y_val in zip(labels, formatted_values):
+        print(x, y_val)
+    print('SFC (kg/(N h)):', f"{SFC*3600:.5f}")
+    print('Thrust Ratio:', f"{((V_9_a0-M_0)/(V_19_a0-M_0)):.5f}")
+    print('Bypass Nozzle Radius, from center line (geometry) (m):', f"{r_bypass_nozzle_geometry:.5f}")
+    print('Bypass Nozzle Radius, from center line (mass flow) (m):', f"{r_bypass_nozzle:.5f}")
+
+"Trade Study"
+BPR_range = np.arange(2.0, 4.01, 0.25)
+FPR_range = np.arange(1.2, 1.61, 0.05)
+pi_c_range = np.arange(4, 11, 1)
+
+trade_results = []
+
+for fuel_index in range(len(h_PR_list)):
+    h_PR = h_PR_list[fuel_index]
+    fuel_name = fuel_names[fuel_index]
+
+    for BPR_trade in BPR_range:
+        for pi_f_trade in FPR_range:
+            for pi_c_trade in pi_c_range:
+
+                R_trade = ((y - 1) / y) * Cp
+                a_0_trade = sqrt(y * R_trade * T_0)
+                M_0_trade = V_0 / a_0_trade
+
+                tau_r_trade = 1 + ((y - 1) / 2) * (M_0_trade ** 2)
+                tau_lamb_trade = T_t4 / T_0
+                tau_c_trade = pi_c_trade ** ((y - 1) / y)
+                tau_f_trade = pi_f_trade ** ((y - 1) / y)
+
+                core_term_trade = (2 / (y - 1)) * (tau_lamb_trade - tau_r_trade * (tau_c_trade - 1 + BPR_trade * (tau_f_trade - 1)) - tau_lamb_trade / (tau_r_trade * tau_c_trade))
+                bypass_term_trade = (2 / (y - 1)) * (tau_r_trade * tau_f_trade - 1)
+
+                if core_term_trade < 0 or bypass_term_trade < 0:
+                    continue
+
+                V_9_a0_trade = sqrt(core_term_trade)
+                V_19_a0_trade = sqrt(bypass_term_trade)
+
+                F_m0_trade = (a_0_trade / (1 + BPR_trade)) * (V_9_a0_trade - M_0_trade + BPR_trade * (V_19_a0_trade - M_0_trade))
+                f_trade = ((Cp * T_0) / h_PR) * (tau_lamb_trade - tau_r_trade * tau_c_trade)
+                SFC_trade = f_trade / ((1 + BPR_trade) * F_m0_trade)
+
+                eta_T_trade = 1 - 1 / (tau_r_trade * tau_c_trade)
+                eta_P_trade = 2 * M_0_trade * ((V_9_a0_trade - M_0_trade + BPR_trade * (V_19_a0_trade - M_0_trade)) / (V_9_a0_trade ** 2 - M_0_trade ** 2 + BPR_trade * (V_19_a0_trade ** 2 - M_0_trade ** 2)))
+                eta_0_trade = eta_T_trade * eta_P_trade
+
+                F_0_mass_flow_trade = F_m0_trade * mass_flow
+
+                trade_results.append([fuel_name, BPR_trade, pi_f_trade, pi_c_trade,
+                                      F_m0_trade, f_trade, SFC_trade, SFC_trade * 3600,
+                                      eta_T_trade, eta_P_trade, eta_0_trade, F_0_mass_flow_trade])
+
+"CSV Export"
+with open("turbofan_trade_study_results.csv", "w", newline="") as file:
+    writer = csv.writer(file)
+    writer.writerow(["Fuel", "BPR", "FPR", "CPR", "Specific Thrust (N/(kg/s))",
+                     "Fuel-Air Ratio", "SFC (kg/(N s))", "SFC (kg/(N h))",
+                     "Thermal Efficiency", "Propulsive Efficiency",
+                     "Total Efficiency", "Thrust (N)"])
+    writer.writerows(trade_results)
+
+print("\nTrade study complete. Results saved as turbofan_trade_study_results.csv")
+
+"Best Jet A Case"
+jetA_cases = [row for row in trade_results if row[0] == "Jet A"]
+best_jetA = min(jetA_cases, key=lambda x: x[7])
+
+print("\n========== BEST JET A CASE ==========")
+print("Fuel:", best_jetA[0])
+print("Best BPR:", best_jetA[1])
+print("Best FPR:", best_jetA[2])
+print("Best CPR:", best_jetA[3])
+print("Specific Thrust (N/(kg/s)):", f"{best_jetA[4]:.5f}")
+print("Fuel-Air Ratio:", f"{best_jetA[5]:.7f}")
+print("Minimum SFC (kg/(N h)):", f"{best_jetA[7]:.5f}")
+print("Thermal Efficiency:", f"{best_jetA[8]:.5f}")
+print("Propulsive Efficiency:", f"{best_jetA[9]:.5f}")
+print("Total Efficiency:", f"{best_jetA[10]:.5f}")
+print("Thrust (N):", f"{best_jetA[11]:.5f}")
+
+"Plots for Jet A at CPR = 6"
+jetA_plot_cases = [row for row in trade_results if row[0] == "Jet A" and row[3] == 6]
+
+plt.figure()
+for fpr_val in FPR_range:
+    x_vals = [row[1] for row in jetA_plot_cases if abs(row[2] - fpr_val) < 1e-9]
+    y_vals = [row[11] for row in jetA_plot_cases if abs(row[2] - fpr_val) < 1e-9]
+    plt.plot(x_vals, y_vals, label=f"FPR={fpr_val:.2f}")
+plt.xlabel("Bypass Ratio (BPR)")
+plt.ylabel("Thrust (N)")
+plt.title("Thrust vs BPR for Jet A at CPR = 6")
+plt.grid(True)
+plt.legend()
+plt.show()
+
+plt.figure()
+for fpr_val in FPR_range:
+    x_vals = [row[1] for row in jetA_plot_cases if abs(row[2] - fpr_val) < 1e-9]
+    y_vals = [row[7] for row in jetA_plot_cases if abs(row[2] - fpr_val) < 1e-9]
+    plt.plot(x_vals, y_vals, label=f"FPR={fpr_val:.2f}")
+plt.xlabel("Bypass Ratio (BPR)")
+plt.ylabel("SFC (kg/(N h))")
+plt.title("SFC vs BPR for Jet A at CPR = 6")
+plt.grid(True)
+plt.legend()
+plt.show()
+
+plt.figure()
+for fpr_val in FPR_range:
+    x_vals = [row[1] for row in jetA_plot_cases if abs(row[2] - fpr_val) < 1e-9]
+    y_vals = [row[10] for row in jetA_plot_cases if abs(row[2] - fpr_val) < 1e-9]
+    plt.plot(x_vals, y_vals, label=f"FPR={fpr_val:.2f}")
+plt.xlabel("Bypass Ratio (BPR)")
+plt.ylabel("Total Efficiency")
+plt.title("Total Efficiency vs BPR for Jet A at CPR = 6")
+plt.grid(True)
+plt.legend()
+plt.show()
